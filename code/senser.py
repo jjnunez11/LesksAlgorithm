@@ -1,3 +1,4 @@
+from nltk.corpus import wordnet as wn
 # -*- coding: utf-8 -*-
 """
 Created on Wed Feb 20 13:17:34 2019
@@ -7,13 +8,21 @@ Created on Wed Feb 20 13:17:34 2019
 
 class Senser:
     def __init__(self, wsdi):
-        self.wsdi = wsdi        # id of the WSD instance
-        # self.lemma = lemma      # lemma of the word whose sense is to be resolved
-        #self.context = context  # lemma of all the words in the sentential context
-        # self.index = index      # index of lemma within the context
+        self.wsdi = wsdi        
+        
+        ##print(type(wn.get_version()))
+        
+        #Ensure WordNet version 3.0
+        ##if (float(wn.get_version()) != 3.0):
+        ##    raise ValueError('WordNet version is not 3.0, instead is: ' + wn.get_version())
+        
+
         
     def predictBase(self):
-        return 1
+        # Convert byte to str
+        lemma = self.wsdi.getLemma().decode('UTF-8')
+        # Return the sense (keys) for the most probable (top) sense of this lemma
+        return wn.synsets(lemma)[0].lemmas()[0].key()
     
     def predictLesks(self):
         return 1
