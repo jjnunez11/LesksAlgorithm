@@ -42,7 +42,9 @@ for instance_id, instance in dev_instances.items():
     ##print(base_pred)
     ##print(true_sense)
     base_acc  += inList(base_pred, true_sense)
+    ##print(instance.getContext())
     lesks_acc += inList(lesks_pred, true_sense)
+    ## TO DO REMOVE
 
 
 # Calculate and print accuracies
