@@ -4,15 +4,14 @@ from nltk.tokenize import word_tokenize
 from nltk.stem import WordNetLemmatizer
 import string
 import re
-# -*- coding: utf-8 -*-
 """
 Created on Wed Feb 20 13:17:34 2019
 
 @author: jjnun
 """
 
-# Set whether to be verbose for a debug mode
-## debug_on = False
+# Set whether to be verbose for the processing steps, for debuging
+## debug_on = True
 debug_on = False
 
 class Senser:
@@ -55,34 +54,6 @@ class Senser:
             base_pred.append(l.key()) 
             
         return base_pred
-        
-    
-#    # Simplified Lesk's Algorithm, where if all senses have 0 overlap, chooses first
-#    def predict_slesks_tkft(self):        
-#        if debug_on: print('This is the lemma: ' + str(self.lemma))
-#        
-#        best_overlap = -1
-#        for sense in self.senses:
-#            
-#            # Process sense's definition
-#            raw_definition = sense.definition()
-#            definition = process_definition(raw_definition, self.lemma, self.ignore_words, self.lemmatizer)    
-#            
-#            # Compute a score for each sense per simplified Lesk algorithm
-#            overlap = len(set(self.context) & set(definition))
-#            if debug_on: print('This defs overlap: ' + str(overlap) + '\n')
-#            
-#            # Store if best            
-#            if (overlap > best_overlap):
-#                best_overlap = overlap
-#                slesks_tkft_pred = []
-#                #lesks_pred = sense.lemmas()[0].key()
-#                for l in sense.lemmas():
-#                    slesks_tkft_pred.append(l.key())
-#                ##print('here is first lemma.key: ' + str(sense.lemmas()[0].key()))
-#                ##print('here is one lemma.key: ' + str(sense.lemmas()[1].key()))
-#                
-#        return slesks_tkft_pred
     
     # Simplified Lesk's Algorithm, making no prediction if all senses have 0 overlap
     def predict_slesks(self, default_to_first=False):
@@ -95,8 +66,7 @@ class Senser:
         else:
             best_overlap = 0
         
-        for sense in self.senses:
-            
+        for sense in self.senses:     
             # Process sense's definition
             raw_definition = sense.definition()
             definition = process_definition(raw_definition, self.lemma, self.ignore_words, self.lemmatizer)    
@@ -109,24 +79,26 @@ class Senser:
             if (overlap > best_overlap):
                 best_overlap = overlap
                 slesks_pred = []
-                #lesks_pred = sense.lemmas()[0].key()
+                # Add in all the possible keys
                 for l in sense.lemmas():
                     slesks_pred.append(l.key())
-                ##print('here is first lemma.key: ' + str(sense.lemmas()[0].key()))
-                ##print('here is one lemma.key: ' + str(sense.lemmas()[1].key()))
-                
+  
         return slesks_pred
     
     # Original Lesk's Algorithm, making no prediction if all senses have 0 overlap
-    def predict_olesks(self):
+    def predict_olesks(self, default_to_first=False):
         if debug_on: print('This is the lemma: ' + str(self.lemma))
         ignore_words = self.ignore_words
         lemmatizer = self.lemmatizer
         olesks_pred = []
         
-        best_overlap = 0 # -1 will choose first sense even if none have matches, 0 will ignore unless actual match
+        # If default_to_first is True, if no overlap anywhere, predict first sense, otherwise do not
+        if default_to_first:
+            best_overlap = -1
+        else:
+            best_overlap = 0
+        
         for sense in self.senses:
-            
             # Process sense's definition
             raw_definition = sense.definition()
             definition = process_definition(raw_definition, self.lemma, ignore_words, lemmatizer)    
@@ -136,15 +108,12 @@ class Senser:
             if debug_on: print('This defs overlap: ' + str(overlap) + '\n')
             
             # Store if best, but only if it's above zero, can break tie 
-            
             if (overlap > best_overlap):
                 best_overlap = overlap
                 olesks_pred = []
-                #lesks_pred = sense.lemmas()[0].key()
+                # Add in all the possible keys
                 for l in sense.lemmas():
                     olesks_pred.append(l.key())
-                ##print('here is first lemma.key: ' + str(sense.lemmas()[0].key()))
-                ##print('here is one lemma.key: ' + str(sense.lemmas()[1].key()))
                 
         return olesks_pred
 
@@ -199,9 +168,3 @@ def process_definition(raw_definition, lemma, ignore_words, lemmatizer):
         print('Clean def: ' + str(definition))
     
     return lem_definiiton
-
-    
-
-#policy%1:09:00::
-##print(wn.synsets('policy'))
-##print(wn.synsets('policy')[0].lemmas())#[0].key())

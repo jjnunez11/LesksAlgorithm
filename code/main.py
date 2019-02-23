@@ -2,13 +2,12 @@ import loader
 from senser import Senser
 from nltk.corpus import wordnet as wn
 
-# -*- coding: utf-8 -*-
 """
 Created on Tue Feb 19 16:15:31 2019
 
 @author: jjnun
 """
-# Quick helper function to return whether an item is in a list, 1 = true, 0 equals false
+# Quick helper function to return whether an item is both list, 1 = true, 0 equals false
 def mutual_element(a_list, b_list):
     a_set = set(a_list)
     b_set = set(b_list)
@@ -20,8 +19,6 @@ def mutual_element(a_list, b_list):
 # Quick helper to calculate F1    
 def my_F1(prec, recall):
     return 2*(prec * recall)/(prec + recall)
-
-
 
 # Load with given code
 data_f = 'multilingual-all-words.en.xml'
@@ -38,86 +35,60 @@ base_acc  = 0 # Accuracy accumulator for choosing sense to be most common (#1 in
 slesks_tkft_acc = 0 # Accuracy accumulator for choosing sense with simplified lesks taking first if all 0
 slesks_acc = 0 # Accuracy accumulator for choosing sense with simplified lesks without using 0
 slesks_n_rvd = 0 # Number retrieved by simplified lesks, for prec/recall
+olesks_tkft_acc = 0 # Accuracy accumulator for choosing sense with original lesks, takin first if all 0
 olesks_acc = 0 # Accuracy accumulator for choosing sense with original lesks without using 0s
 olesks_n_rvd = 0 # Number retrieved by original lesks, for prec/recall
 
 n_instances = len(dev_instances)
-##TODO REMOVE DEBUGGING
-debug = 0
 
 for instance_id, instance in dev_instances.items():
     # Retrieve correct sense
-    ##print(type(instance))
     true_sense = dev_key[instance_id]
     # Find predicted senses
     senser = Senser(instance)
     base_pred  = senser.predictBase()
     base_acc  += mutual_element(base_pred, true_sense)
-    ##print(instance.getContext())
-    
-#    ## Debgugging
-#    if debug == 176:
-#        slesks_tkft_pred = senser.predictLesks()
-#        print('Predicted senses: ' + str(slesks_tkft_pred))
-#        print(wn.lemma_from_key(slesks_tkft_pred[0]).synset().definition())
-#        print('\n')
-#        print('The true senses are: ' + str(true_sense))
-#        print(wn.lemma_from_key(true_sense[0]).synset().definition())
-#        print('\n')
-#        print('True?: ' + str(mutual_element(slesks_tkft_pred, true_sense)))
-#    slesks_tkft_acc = 0 ## TODO REMOVE
-#    debug += 1 ## TODO REMOVE
-    
-    ## Debugging 2
-#    slesks_tkft_pred = senser.predictLesks()
-#    if mutual_element(base_pred, true_sense) > mutual_element(slesks_tkft_pred, true_sense):
-#        print(' ' + str(debug) + ' ')
-#    slesks_tkft_acc = 0
-#    debug += 1
-
-    # Runtime
-    
-    # Simplified Lesks algorithm that breaks a tie, including 0, by taking first sense
-    slesks_tkft_pred = senser.predict_slesks(default_to_first=True)
-    slesks_tkft_acc += mutual_element(slesks_tkft_pred, true_sense)
     
     # Simplified Lesks that only predicts if score > 0, will break tie by first in this case
     slesks_pred = senser.predict_slesks(default_to_first=False)
     slesks_acc += mutual_element(slesks_pred, true_sense)
     # Increment number retrived if it found something
-    if len(slesks_pred) > 0: slesks_n_rvd += 1 
+    if len(slesks_pred) > 0: slesks_n_rvd += 1
+    
+    # Simplified Lesks algorithm that breaks a tie, including 0, by taking first sense
+    slesks_tkft_pred = senser.predict_slesks(default_to_first=True)
+    slesks_tkft_acc += mutual_element(slesks_tkft_pred, true_sense)
     
     # Original Lesks algorithm that only predicts if score > 0, breaks tie by first in this case
-    olesks_pred = senser.predict_olesks()
+    olesks_pred = senser.predict_olesks(default_to_first=False)
     olesks_acc += mutual_element(olesks_pred, true_sense)
     # Increment number retrived if it found something
-    if len(olesks_pred) > 0: olesks_n_rvd += 1     
+    if len(olesks_pred) > 0: olesks_n_rvd += 1
+
+    # Original Lesks algorithm that predicts the first sense if no matches found
+    olesks_tkft_pred = senser.predict_olesks(default_to_first=True)
+    olesks_tkft_acc += mutual_element(olesks_tkft_pred, true_sense)      
 
 # Calculate and print accuracies, precision, recall
 base_acc = base_acc/n_instances
-slesks_tkft_acc = slesks_tkft_acc/n_instances
 
+slesks_tkft_acc = slesks_tkft_acc/n_instances
 slesks_prec = slesks_acc/slesks_n_rvd
 slesks_acc = slesks_acc/n_instances
 slesks_f1 = my_F1(slesks_prec, slesks_acc)
 
+olesks_tkft_acc = olesks_tkft_acc/n_instances
 olesks_prec = olesks_acc/olesks_n_rvd
 olesks_acc = olesks_acc/n_instances
 olesks_f1 = my_F1(olesks_prec, olesks_acc)
 
-print("Total examples: " + str(debug))
 print("Base accuracy is: " + str(base_acc))
 print("Simplified Lesk's algorithm, breaking 0 by first sense, accuracy/recall/precision/F1 is: " + str(slesks_tkft_acc))
 print("Simplified Lesk's algorithm, ignoring 0's, accuracy/recall is: " + str(slesks_acc))
 print("Simplified Lesk's algorithm, ignoring 0's, precision is: " + str(slesks_prec))
 print("Simplified Lesk's algorithm, ignoring 0's, F1 is: " + str(slesks_f1))
+print("Original Lesk's algorithm, breaking 0 by first sense, accuracy/recall/precision/F1 is: " + str(olesks_tkft_acc))
 print("Original Lesk's algorithm, ignoring 0's, accuracy/recall is: " + str(olesks_acc))
 print("Original Lesk's algorithm, ignoring 0's, precision is: " + str(olesks_prec))
 print("Original Lesk's algorithm, ignoring 0's, F1 is: " + str(olesks_f1))
-# Debugging
-
-#print(dev_instances)
-
-#print(dev_instances['d001.s029.t001'].getID())
-
 
