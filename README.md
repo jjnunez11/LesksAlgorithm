@@ -1,5 +1,5 @@
 # LesksAlgorithm
-Imeplements Lesk's Algorithm for word disambiguation using WordNet as a lexical  source
+Imeplements Lesk's Algorithm for word-sense disambiguation using WordNet as a lexical  source, implemented with data from the SemEval 2013 Shared Task #12 
 
 
 Run with [main.py](code/main.py)
