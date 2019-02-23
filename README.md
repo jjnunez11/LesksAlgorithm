@@ -2,6 +2,6 @@
 Imeplements Lesk's Algorithm for word disambiguation using WordNet as a lexical  source
 
 
-[Run with main.py](code/main.py)
+Run with [main.py](code/main.py)
 
-[The algorithm's code, and processing, is found here](code/senser.py)
+The code for the processing and prediction is found in [senser.py](code/senser.py)
