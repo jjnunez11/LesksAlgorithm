@@ -11,21 +11,41 @@ Created on Wed Feb 20 13:17:34 2019
 @author: jjnun
 """
 
+# Set whether to be verbose for a debug mode
+## debug_on = False
+debug_on = False
+
 class Senser:
     def __init__(self, wsdi):
         self.wsdi = wsdi        
+        lemma = wsdi.getLemma().decode('UTF-8').lower()
+        self.lemma = lemma
         
-        ##print(type(wn.get_version()))
+        # Prepare shared resources
         
-        #Ensure WordNet version 3.0
-        ##if (float(wn.get_version()) != 3.0):
-        ##    raise ValueError('WordNet version is not 3.0, instead is: ' + wn.get_version())
+        # Make list of words to remove
+        stop_punc_words = list(string.punctuation) + stopwords.words('english') # No punctation or stop words
+        stop_punc_words.append('@card@') # Remove this card marker
+        stop_punc_words.append(lemma) # Remove Lemma, improves performancae
+        stop_punc_words.append('--') # Remove -- which sometimes appears
+        stop_punc_words.append('\'s') # Remove this posession marker
+        self.stop_punc_words = stop_punc_words
         
-
+        # Instantiate a lemmatizer
+        lemmatizer = WordNetLemmatizer()
+        self.lemmatizer = lemmatizer
+        
+        # Get senses
+        self.senses = wn.synsets(lemma, pos = wn.NOUN)
+        
+        # Process context
+        raw_context = self.wsdi.getContext()
+        context = process_context(raw_context, lemma, stop_punc_words, lemmatizer)
+        self.context = context
         
     def predictBase(self):
         # Convert byte to str
-        lemma = self.wsdi.getLemma().decode('UTF-8')
+        lemma = self.lemma
         # Return the sense (keys) for the most probable (top) sense of this lemma
         base_pred = []
         
@@ -36,51 +56,61 @@ class Senser:
             
         return base_pred
         
-        ##return wn.synsets(lemma)[0].lemmas()[0].key()
     
-    def predictLesks(self):
-        lemma = self.wsdi.getLemma().decode('UTF-8')
-        senses = wn.synsets(lemma, pos = wn.NOUN)
-        print('This is the lemma: ' + str(lemma))
-        
-        # Process the defintiion and the context
-        # First prepare shared resources
-        # We wont count punctuation or stop words
-        stop_punc_words = list(string.punctuation) + stopwords.words('english')
-        # Also don't use these, which are a marker in the context
-        stop_punc_words.append('@card@') 
-        # Also eliminate the lemma from the definition
-        stop_punc_words.append(lemma)
-        # Instantiate a lemmatizer
-        lemmatizer = WordNetLemmatizer()
-        
-        #Process context
-        raw_context = self.wsdi.getContext()
-        context = process_context(raw_context, lemma, stop_punc_words, lemmatizer)
+    # Simplified Lesk's Algorithm, where if all senses have 0 overlap, chooses first
+    def predict_slesks_tkft(self):        
+        if debug_on: print('This is the lemma: ' + str(self.lemma))
         
         best_overlap = -1
-        for sense in senses:
+        for sense in self.senses:
             
             # Process sense's definition
             raw_definition = sense.definition()
-            definition = process_definition(raw_definition, lemma, stop_punc_words, lemmatizer)    
+            definition = process_definition(raw_definition, self.lemma, self.stop_punc_words, self.lemmatizer)    
             
             # Compute a score for each sense per simplified Lesk algorithm
-            overlap = len(set(context) & set(definition))
-            print('This defs overlap: ' + str(overlap) + '\n')
+            overlap = len(set(self.context) & set(definition))
+            if debug_on: print('This defs overlap: ' + str(overlap) + '\n')
             
             # Store if best            
             if (overlap > best_overlap):
                 best_overlap = overlap
-                lesks_pred = []
+                slesks_tkft_pred = []
                 #lesks_pred = sense.lemmas()[0].key()
                 for l in sense.lemmas():
-                    lesks_pred.append(l.key())
+                    slesks_tkft_pred.append(l.key())
                 ##print('here is first lemma.key: ' + str(sense.lemmas()[0].key()))
                 ##print('here is one lemma.key: ' + str(sense.lemmas()[1].key()))
                 
+        return slesks_tkft_pred
+    
+    # Simplified Lesk's Algorithm, making no prediction if all senses have 0 overlap
+    def predict_slesks(self):
+        if debug_on: print('This is the lemma: ' + str(self.lemma))
         
-        return lesks_pred
+        best_overlap = 0
+        for sense in self.senses:
+            
+            # Process sense's definition
+            raw_definition = sense.definition()
+            definition = process_definition(raw_definition, self.lemma, self.stop_punc_words, self.lemmatizer)    
+            
+            # Compute a score for each sense per simplified Lesk algorithm
+            overlap = len(set(self.context) & set(definition))
+            if debug_on: print('This defs overlap: ' + str(overlap) + '\n')
+            
+            # Store if best, but only if it's above zero, can break tie 
+            slesks_pred = []
+            if (overlap > best_overlap):
+                best_overlap = overlap
+                slesks_pred = []
+                #lesks_pred = sense.lemmas()[0].key()
+                for l in sense.lemmas():
+                    slesks_pred.append(l.key())
+                ##print('here is first lemma.key: ' + str(sense.lemmas()[0].key()))
+                ##print('here is one lemma.key: ' + str(sense.lemmas()[1].key()))
+                
+        return slesks_pred
 
 def process_context(raw_context, lemma, stop_punc_words, lemmatizer):
     
@@ -96,15 +126,11 @@ def process_context(raw_context, lemma, stop_punc_words, lemmatizer):
     lem_context = [lemmatizer.lemmatize(t) for t in context]
     
     ## Debugging
-    print('Raw context: ' + str(raw_context))
-    print('Clean context: ' + str(context) + '\n')
-    
-    
+    if debug_on:
+        print('Raw context: ' + str(raw_context))
+        print('Clean context: ' + str(context) + '\n')
+      
     return lem_context
-    
-    
-    
-    
     
 def process_definition(raw_definition, lemma, stop_punc_words, lemmatizer):
     
@@ -118,9 +144,9 @@ def process_definition(raw_definition, lemma, stop_punc_words, lemmatizer):
     lem_definiiton = [lemmatizer.lemmatize(t) for t in definition]
     
     ## Debugging
-    print('Raw def: ' + str(raw_definition))
-    print('Clean def: ' + str(definition))
-    
+    if debug_on:
+        print('Raw def: ' + str(raw_definition))
+        print('Clean def: ' + str(definition))
     
     return lem_definiiton
 
