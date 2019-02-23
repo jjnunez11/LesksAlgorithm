@@ -38,19 +38,12 @@ base_acc  = 0 # Accuracy accumulator for choosing sense to be most common (#1 in
 slesks_tkft_acc = 0 # Accuracy accumulator for choosing sense with simplified lesks taking first if all 0
 slesks_acc = 0 # Accuracy accumulator for choosing sense with simplified lesks without using 0
 slesks_n_rvd = 0 # Number retrieved by simplified lesks, for prec/recall
-
+olesks_acc = 0 # Accuracy accumulator for choosing sense with original lesks without using 0s
+olesks_n_rvd = 0 # Number retrieved by original lesks, for prec/recall
 
 n_instances = len(dev_instances)
-
-
-##print(type(dev_instances.values()))
-
 ##TODO REMOVE DEBUGGING
 debug = 0
-
-
-
-
 
 for instance_id, instance in dev_instances.items():
     # Retrieve correct sense
@@ -81,36 +74,46 @@ for instance_id, instance in dev_instances.items():
 #        print(' ' + str(debug) + ' ')
 #    slesks_tkft_acc = 0
 #    debug += 1
-#    
 
+    # Runtime
     
-    ## Actual
     # Simplified Lesks algorithm that breaks a tie, including 0, by taking first sense
-    slesks_tkft_pred = senser.predict_slesks_tkft()
+    slesks_tkft_pred = senser.predict_slesks(default_to_first=True)
     slesks_tkft_acc += mutual_element(slesks_tkft_pred, true_sense)
     
     # Simplified Lesks that only predicts if score > 0, will break tie by first in this case
-    slesks_pred = senser.predict_slesks()
+    slesks_pred = senser.predict_slesks(default_to_first=False)
     slesks_acc += mutual_element(slesks_pred, true_sense)
     # Increment number retrived if it found something
     if len(slesks_pred) > 0: slesks_n_rvd += 1 
+    
+    # Original Lesks algorithm that only predicts if score > 0, breaks tie by first in this case
+    olesks_pred = senser.predict_olesks()
+    olesks_acc += mutual_element(olesks_pred, true_sense)
+    # Increment number retrived if it found something
+    if len(olesks_pred) > 0: olesks_n_rvd += 1     
 
 # Calculate and print accuracies, precision, recall
 base_acc = base_acc/n_instances
 slesks_tkft_acc = slesks_tkft_acc/n_instances
+
 slesks_prec = slesks_acc/slesks_n_rvd
 slesks_acc = slesks_acc/n_instances
 slesks_f1 = my_F1(slesks_prec, slesks_acc)
 
+olesks_prec = olesks_acc/olesks_n_rvd
+olesks_acc = olesks_acc/n_instances
+olesks_f1 = my_F1(olesks_prec, olesks_acc)
 
 print("Total examples: " + str(debug))
 print("Base accuracy is: " + str(base_acc))
-print("Simplified Lesk's algorithm, breaking 0 by first sense, accuracy/recall/precision is: " + str(slesks_tkft_acc))
-print("Simplified Lesk's algorithm, breaking 0 by first sense, F1 is: " + str(my_F1(slesks_tkft_acc, slesks_tkft_acc)))
+print("Simplified Lesk's algorithm, breaking 0 by first sense, accuracy/recall/precision/F1 is: " + str(slesks_tkft_acc))
 print("Simplified Lesk's algorithm, ignoring 0's, accuracy/recall is: " + str(slesks_acc))
 print("Simplified Lesk's algorithm, ignoring 0's, precision is: " + str(slesks_prec))
 print("Simplified Lesk's algorithm, ignoring 0's, F1 is: " + str(slesks_f1))
-
+print("Original Lesk's algorithm, ignoring 0's, accuracy/recall is: " + str(olesks_acc))
+print("Original Lesk's algorithm, ignoring 0's, precision is: " + str(olesks_prec))
+print("Original Lesk's algorithm, ignoring 0's, F1 is: " + str(olesks_f1))
 # Debugging
 
 #print(dev_instances)
